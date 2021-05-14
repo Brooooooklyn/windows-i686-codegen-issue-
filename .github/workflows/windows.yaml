@@ -1,0 +1,46 @@
+name: Windows i686
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build_and_test:
+    name: stable - windows-latest - i686 - node@14
+
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [1.52.1, 1.51.0]
+
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup node
+        run: choco install nodejs-lts --x86 -y --force
+
+      - name: Set 32bit Node.js path
+        run: |
+          echo "C:\\Program Files (x86)\\nodejs" >> $GITHUB_PATH
+        shell: bash
+
+      - name: Install
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          profile: minimal
+          override: true
+
+      - name: Install i686 toolchain
+        run: rustup target add i686-pc-windows-msvc
+
+      - name: Build Tests
+        run: |
+          cargo build --target i686-pc-windows-msvc
+          cp target/i686-pc-windows-msvc/debug/test.dll ./test.node
+          node index.js
+        env:
+          RUST_BACKTRACE: 1
+  
