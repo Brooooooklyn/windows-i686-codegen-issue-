@@ -103,8 +103,29 @@ extern "C" {
     ) -> napi_status;
 }
 
+#[doc(hidden)]
+#[macro_export]
+macro_rules! check_status {
+    ($code:expr) => {{
+        let c = $code;
+        match c {
+            Status::napi_ok => Ok(()),
+            _ => Err(()),
+        }
+    }};
+}
+
+#[doc(hidden)]
+#[macro_export(local_inner_macros)]
+macro_rules! type_oooof {
+    ($env:expr, $value:expr) => {{
+        let mut value_type = 0;
+        let status = napi_typeof($env, $value, &mut value_type);
+        check_status!(status).map(|_| value_type)
+    }};
+}
+
 unsafe extern "C" fn type_of(raw_env: napi_env, cb_info: napi_callback_info) -> napi_value {
-    let mut value_type = 0;
     let mut argc = 1;
     let mut raw_args: [napi_value; 1] = [ptr::null_mut(); 1];
     let status = napi_get_cb_info(
@@ -118,8 +139,7 @@ unsafe extern "C" fn type_of(raw_env: napi_env, cb_info: napi_callback_info) -> 
     assert!(status == Status::napi_ok, "napi_get_cb_info failed");
 
     let input_arg = raw_args[0];
-    let status = napi_typeof(raw_env, input_arg, &mut value_type);
-    assert!(status == Status::napi_ok, "napi_typeof failed");
+    let value_type = type_oooof!(raw_env, input_arg).unwrap();
 
     println!(
         "Value type: {}, expected Value type: {}",
